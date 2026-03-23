@@ -1,0 +1,10 @@
+build/
+*.o
+*.d
+*.gcno
+*.gcda
+*.gcov
+coverage.info
+compile_commands.json
+.DS_Store
+.cache/
