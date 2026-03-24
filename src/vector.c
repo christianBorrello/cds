@@ -1,5 +1,6 @@
 #include "cds/vector.h"
 #include "cds/common.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include "cds/algo.h"
@@ -16,6 +17,10 @@ struct cds_vector {
 cds_vector *cds_vector_create(size_t size) {
   cds_vector *v = malloc(sizeof(struct cds_vector));
   if (!v) return NULL;
+  if (is_sizet_overflow(size, INITIAL_CAPACITY)) {
+    free(v);
+    return NULL;
+  }
   v->data = malloc(size * INITIAL_CAPACITY);
   if (!v->data) {
     free(v);
@@ -43,6 +48,7 @@ cds_vector *cds_vector_from(const void *src, size_t n, size_t size) {
 int cds_vector_reserve(cds_vector *v, size_t n) {
   if (!v || !v->data) return CDS_ERR_NULL;
   if (n <= v->capacity) return CDS_OK;
+  if (is_sizet_overflow(n, v->element_size)) return CDS_ERR_ALLOC;
   void *new_data = realloc(v->data, n * v->element_size);
   if (!new_data) return CDS_ERR_ALLOC;
   v->data = new_data;
@@ -71,6 +77,9 @@ int cds_vector_set(cds_vector *v, size_t index, const void *element) {
 int cds_vector_push(cds_vector *v, const void *element) {
   if (!v || !v->data || !element) return CDS_ERR_NULL;
   if (v->size == v->capacity) {
+    if (is_sizet_overflow(2, v->capacity) ||
+        is_sizet_overflow((v->capacity * 2), v->element_size))
+      return CDS_ERR_ALLOC;
     void *new_data = realloc(v->data, v->capacity * 2 * v->element_size);
     if (!new_data) return CDS_ERR_ALLOC;
     v->data = new_data;
