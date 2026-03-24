@@ -8,3 +8,5 @@ coverage.info
 compile_commands.json
 .DS_Store
 .cache/
+.nwave/
+CLAUDE.md
