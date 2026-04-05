@@ -15,6 +15,7 @@ struct cds_vector {
 };
 
 cds_vector *cds_vector_create(size_t size) {
+  if (size == 0) return NULL;
   cds_vector *v = malloc(sizeof(struct cds_vector));
   if (!v) return NULL;
   if (is_sizet_overflow(size, INITIAL_CAPACITY)) {
