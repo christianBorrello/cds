@@ -16,24 +16,35 @@ make clean  # removes build artifacts
 ```
 include/cds/   — public headers
 src/           — implementations
-tests/         — manual test programs
+tests/         — test suite
 ```
 
 ## What's Implemented
 
-- **vector** — dynamic array with push/pop, sort, binary & linear search
-- **algo** — standalone algorithms on raw arrays (quicksort with median-of-three, binary search, linear search, is_sorted)
+### Data Structures
+- **vector** — dynamic array with push/pop, get/set, sort, binary & linear search, clear, reserve
+- **llist** — singly-linked list with prepend/append, insert, pop/pop_back, remove/purge, find/contains
+- **stack** — LIFO container (composition over llist)
+- **queue** — FIFO container (composition over llist)
+- **hashmap** — hash table with separate chaining (in progress)
+
+### Algorithms
+- **quicksort** — median-of-three pivot, insertion sort fallback for small subarrays
+- **binary search** — on sorted arrays
+- **linear search** — on unsorted arrays
+- **is_sorted** — sorted check
+
+### API conventions
+- All public symbols use the `cds_` prefix: `cds_<container>_<verb>`
+- Functions return `int` error codes (`CDS_OK`, `CDS_ERR_NULL`, `CDS_ERR_INDEX`, etc.)
+- Data is returned via `void *out` parameter (copy semantics, no internal pointer exposure)
+- All containers are opaque types — internals hidden in `.c` files
+- `count` = number of elements, `size` = byte size of data
 
 ## What's Next
 
-### Data Structures
-- stack
-- queue
-- linked list
-- hashmap
-
 ### Algorithms
-- merge sort
+- merge sort (for linked list — [#11](https://github.com/christianBorrello/cds/issues/11))
 - heap sort
 - reverse
 - shuffle

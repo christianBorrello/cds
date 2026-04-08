@@ -1,10 +1,9 @@
-#include "cds/linked_list.h"
+#include "cds/llist.h"
 #include "cds/common.h"
-#include <_string.h>
+#include <string.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <string.h>
 
 typedef struct cds_node cds_node;
 
@@ -14,11 +13,11 @@ struct cds_node
   cds_node *next;
 };
 
-struct cds_linked_list
+struct cds_llist
 {
   cds_node *head;
   size_t value_size;
-  size_t size;
+  size_t count;
   cds_node *tail;
 };
 
@@ -46,19 +45,19 @@ static void deallocate_node(cds_node *node)
   free(node);
 }
 
-cds_linked_list *cds_linked_list_create(size_t element_size)
+cds_llist *cds_llist_create(size_t value_size)
 {
-  if (element_size == 0) return NULL;
-  cds_linked_list *ll = malloc(sizeof(cds_linked_list));
+  if (value_size == 0) return NULL;
+  cds_llist *ll = malloc(sizeof(cds_llist));
   if (!ll) return NULL;
   ll->head = NULL;
-  ll->value_size = element_size;
-  ll->size = 0;
+  ll->value_size = value_size;
+  ll->count = 0;
   ll->tail = NULL;
   return ll;
 }
 
-int cds_linked_list_clear(cds_linked_list *ll)
+int cds_llist_clear(cds_llist *ll)
 {
   if (!ll) return CDS_ERR_NULL;
   cds_node *curr_node = ll->head;
@@ -69,20 +68,20 @@ int cds_linked_list_clear(cds_linked_list *ll)
     deallocate_node(tmp);
   }
   ll->head = NULL;
-  ll->size = 0;
+  ll->count = 0;
   ll->tail = NULL;
   return CDS_OK;
 }
 
-int cds_linked_list_destroy(cds_linked_list *ll)
+int cds_llist_destroy(cds_llist *ll)
 {
   if (!ll) return CDS_OK;
-  cds_linked_list_clear(ll);
+  cds_llist_clear(ll);
   free(ll);
   return CDS_OK;
 }
 
-int cds_linked_list_prepend(cds_linked_list *ll, const void *value)
+int cds_llist_prepend(cds_llist *ll, const void *value)
 {
   if (!ll || !value) return CDS_ERR_NULL;
   cds_node *n = allocate_node(value, ll->value_size);
@@ -91,11 +90,11 @@ int cds_linked_list_prepend(cds_linked_list *ll, const void *value)
   ll->head = n;
   ll->head->next = old_head;
   if (!old_head) ll->tail = n;
-  ll->size += 1;
+  ll->count += 1;
   return CDS_OK;
 }
 
-int cds_linked_list_append(cds_linked_list *ll, const void *value)
+int cds_llist_append(cds_llist *ll, const void *value)
 {
   if (!ll || !value) return CDS_ERR_NULL;
   cds_node *n = allocate_node(value, ll->value_size);
@@ -103,73 +102,79 @@ int cds_linked_list_append(cds_linked_list *ll, const void *value)
   if (ll->tail) ll->tail->next = n;
   else ll->head = n;
   ll->tail = n;
-  ll->size += 1;
+  ll->count += 1;
   return CDS_OK;
 }
 
-size_t cds_linked_list_size(const cds_linked_list *ll)
+bool cds_llist_empty(const cds_llist *ll)
+{
+  if (!ll) return true;
+  return ll->count == 0;
+}
+
+size_t cds_llist_count(const cds_llist *ll)
 {
   if (!ll) return 0;
-  return ll->size;
+  return ll->count;
 }
 
-int cds_linked_list_get(const cds_linked_list *ll, size_t index, void *out)
+int cds_llist_get(const cds_llist *ll, size_t index, void *out)
 {
   if (!ll || !out) return CDS_ERR_NULL;
-  if (index >= ll->size) return CDS_ERR_INDEX;
-  cds_node *current_node = ll->head;
+  if (index >= ll->count) return CDS_ERR_INDEX;
+  cds_node *curr_node = ll->head;
   for (size_t j = 0; j < index; j++) 
   { 
-    current_node = current_node->next;
+    curr_node = curr_node->next;
   }
-  memcpy(out, current_node->value, ll->value_size);
+  memcpy(out, curr_node->value, ll->value_size);
   return CDS_OK;
 }
 
-int cds_linked_list_remove_head(cds_linked_list *ll, void *out)
+int cds_llist_pop(cds_llist *ll, void *out)
 {
   if (!ll) return CDS_ERR_NULL;
-  if (ll->size == 0) return CDS_ERR_EMPTY;
+  if (ll->count == 0) return CDS_ERR_EMPTY;
   cds_node *old_head = ll->head;
   ll->head = ll->head->next;
-  if (ll->size == 1) ll->tail = NULL;
+  if (ll->count == 1) ll->tail = NULL;
   if (out) memcpy(out, old_head->value, ll->value_size);
   deallocate_node(old_head);
-  ll->size -= 1;
+  ll->count -= 1;
   return CDS_OK;
 }
 
-int cds_linked_list_remove_tail(cds_linked_list *ll, void *out)
+int cds_llist_pop_back(cds_llist *ll, void *out)
 {
   if (!ll) return CDS_ERR_NULL;
-  if (ll->size == 0) return CDS_ERR_EMPTY;
-  if (ll->size == 1)
+  if (ll->count == 0) return CDS_ERR_EMPTY;
+  if (ll->count == 1)
   {
     if (out) memcpy(out, ll->tail->value, ll->value_size);
     deallocate_node(ll->tail);
-    ll->size = 0;
+    ll->count = 0;
     ll->head = NULL;
     ll->tail = NULL;
     return CDS_OK;
   }
   cds_node *new_tail = ll->head;
-  for (size_t j = 0; j < ll->size - 2; j++)
+  for (size_t j = 0; j < ll->count - 2; j++)
   {
     new_tail = new_tail->next;
   }
   cds_node *old_tail = new_tail->next;
   ll->tail = new_tail;
   ll->tail->next = NULL;
-  ll->size -= 1;
+  ll->count -= 1;
   if (out) memcpy(out, old_tail->value, ll->value_size);
   deallocate_node(old_tail);
   return CDS_OK;
 }
 
-int cds_linked_list_insert_at(cds_linked_list *ll, const void *value, size_t index)
+int cds_llist_insert(cds_llist *ll, const void *value, size_t index)
 {
   if (!ll || !value) return CDS_ERR_NULL;
-  if (index > ll->size) return CDS_ERR_INDEX;
+  if (index > ll->count) return CDS_ERR_INDEX;
   cds_node **link = &ll->head;
   size_t i = 0;
   while (*link && i < index) 
@@ -181,15 +186,15 @@ int cds_linked_list_insert_at(cds_linked_list *ll, const void *value, size_t ind
   if (!new_node) return CDS_ERR_ALLOC;
   new_node->next = *link;
   *link = new_node;
-  if (index == ll->size) ll->tail = new_node;
-  ll->size++;
+  if (index == ll->count) ll->tail = new_node;
+  ll->count++;
   return CDS_OK;
 }
 
-int cds_linked_list_remove(cds_linked_list *ll, const void *value, int(*cmp)(const void *, const void *)) 
+int cds_llist_remove(cds_llist *ll, const void *value, int(*cmp)(const void *, const void *)) 
 {
   if (!ll || !cmp) return CDS_ERR_NULL;
-  if (ll->size == 0) return CDS_ERR_EMPTY;
+  if (ll->count == 0) return CDS_ERR_EMPTY;
   cds_node **link = &ll->head;
   cds_node *last_node = NULL;
   while (*link)
@@ -200,7 +205,7 @@ int cds_linked_list_remove(cds_linked_list *ll, const void *value, int(*cmp)(con
       *link = curr_node->next;
       if (curr_node == ll->tail) ll->tail = last_node;
       deallocate_node(curr_node);
-      ll->size--;
+      ll->count--;
       return CDS_OK;
     }
     else 
@@ -212,10 +217,10 @@ int cds_linked_list_remove(cds_linked_list *ll, const void *value, int(*cmp)(con
   return CDS_ERR_NOT_FOUND;
 }
 
-int cds_linked_list_remove_all(cds_linked_list *ll, const void *value, int(*cmp)(const void *, const void *)) 
+int cds_llist_purge(cds_llist *ll, const void *value, int(*cmp)(const void *, const void *)) 
 {
   if (!ll || !cmp) return CDS_ERR_NULL;
-  if (ll->size == 0) return CDS_ERR_EMPTY;
+  if (ll->count == 0) return CDS_ERR_EMPTY;
   bool removed_nodes = false;
   cds_node **link = &ll->head;
   cds_node *last_node = NULL;
@@ -226,7 +231,7 @@ int cds_linked_list_remove_all(cds_linked_list *ll, const void *value, int(*cmp)
     {
       *link = curr_node->next;
       deallocate_node(curr_node);
-      ll->size--;
+      ll->count--;
       removed_nodes = true;
     }
     else  
@@ -239,10 +244,10 @@ int cds_linked_list_remove_all(cds_linked_list *ll, const void *value, int(*cmp)
   return removed_nodes ? CDS_OK : CDS_ERR_NOT_FOUND;
 }
 
-int cds_linked_list_contains(const cds_linked_list *ll, const void *value, int(*cmp)(const void *, const void *))
+int cds_llist_contains(const cds_llist *ll, const void *value, int(*cmp)(const void *, const void *))
 {
   if (!ll || !value || !cmp) return CDS_ERR_NULL;
-  if (ll->size == 0) return CDS_ERR_EMPTY;
+  if (ll->count == 0) return CDS_ERR_EMPTY;
   cds_node *curr_node = ll->head;
   while (curr_node)
   {
@@ -252,18 +257,35 @@ int cds_linked_list_contains(const cds_linked_list *ll, const void *value, int(*
   return CDS_ERR_NOT_FOUND;
 }
 
-int cds_linked_list_peek_head(const cds_linked_list *ll, void *out)
+int cds_llist_peek(const cds_llist *ll, void *out)
 {
   if (!ll || !out) return CDS_ERR_NULL;
-  if (ll->size == 0) return CDS_ERR_EMPTY;
+  if (ll->count == 0) return CDS_ERR_EMPTY;
   memcpy(out, ll->head->value, ll->value_size);
   return CDS_OK;
 }
 
-int cds_linked_list_peek_tail(const cds_linked_list *ll, void *out)
+int cds_llist_back(const cds_llist *ll, void *out)
 {
   if (!ll || !out) return CDS_ERR_NULL;
-  if (ll->size == 0) return CDS_ERR_EMPTY;
+  if (ll->count == 0) return CDS_ERR_EMPTY;
   memcpy(out, ll->tail->value, ll->value_size);
   return CDS_OK;
+}
+
+int cds_llist_find(const cds_llist *ll, const void *value, 
+    int(*cmp)(const void *, const void *), void *out)
+{
+  if (!ll || !value || !out) return CDS_ERR_NULL;
+  cds_node *curr_node = ll->head;
+  while (curr_node)
+  {
+    if (cmp(curr_node->value, value) == 0)
+    {
+      memcpy(out, curr_node->value, ll->value_size);
+      return CDS_OK;
+    }
+    curr_node = curr_node->next;
+  }
+  return CDS_ERR_NOT_FOUND;
 }

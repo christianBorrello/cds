@@ -93,25 +93,35 @@ int cds_sort(void *base, size_t n, size_t size,
   return CDS_OK;
 }
 
-void *cds_bsearch(const void *base, const void *key, size_t n, size_t size,
-                  int (*cmp)(const void *, const void *)) {
-  if (!base || !key || n == 0 || size == 0 || !cmp) return NULL;
+int cds_bsearch(const void *base, const void *key, size_t n, size_t size,
+                  int (*cmp)(const void *, const void *), void *out) {
+  if (!base || !key || n == 0 ||
+      size == 0 || !cmp || !out) return CDS_ERR_NULL;
 
   size_t low = 0;
   size_t high = n - 1;
+  void *val = NULL;
 
   while (low < high) {
     size_t mid = (low + high) / 2;
-    void *val = elem_at((void *)base, mid, size);
+    val = elem_at((void *)base, mid, size);
     int r = cmp(val, key);
-    if (r == 0) return val;
+    if (r == 0)
+    {
+      memcpy(out, val, size);
+      return CDS_OK;
+    }
     if (r < 0) low = mid + 1;
     else high = mid;
   }
 
-  void *val = elem_at((void *)base, low, size);
-  if (cmp(val, key) == 0) return val;
-  return NULL;
+  val = elem_at((void *)base, low, size);
+  if (cmp(val, key) == 0)
+  {
+    memcpy(out, val, size);
+    return CDS_OK;
+  }
+  return CDS_ERR_NOT_FOUND;
 }
 
 bool cds_is_sorted(const void *base, size_t n, size_t size,
@@ -126,14 +136,18 @@ bool cds_is_sorted(const void *base, size_t n, size_t size,
   return true;
 }
 
-void *cds_lsearch(const void *base, const void *key, size_t n, size_t size,
-                  int (*cmp)(const void *, const void *)) {
-  if (!base || !key || n == 0 || size == 0 || !cmp) return NULL;
+int cds_lsearch(const void *base, const void *key, size_t n, size_t size,
+                  int (*cmp)(const void *, const void *), void *out) {
+  if (!base || !key || n == 0 ||
+      size == 0 || !cmp || !out) return CDS_ERR_NULL;
 
   for (size_t i = 0; i < n; i++) {
     const void *elem = elem_at((void *)base, i, size);
     if (cmp(elem, key) == 0)
-      return (void *)elem;
+    {
+      memcpy(out, elem, size);
+      return CDS_OK;
+    }
   }
-  return NULL;
+  return CDS_ERR_NOT_FOUND;
 }
