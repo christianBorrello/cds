@@ -43,10 +43,19 @@ tests/         — test suite
 
 ## What's Next
 
+### In progress
+- hashmap — complete implementation with dynamic resizing ([#12](https://github.com/christianBorrello/cds/issues/12))
+- merge sort — O(n log n) sorting for linked lists ([#11](https://github.com/christianBorrello/cds/issues/11))
+
 ### Algorithms
-- merge sort (for linked list — [#11](https://github.com/christianBorrello/cds/issues/11))
 - heap sort
 - reverse
 - shuffle
+
+### Future ideas
+- **Iterators** — generic traversal pattern across all containers (callback-based or opaque iterator)
+- **Binary search tree** — BST with AVL or red-black balancing (rotations, invariant maintenance)
+- **Heap + priority queue** — binary heap backed by vector, implicit tree via index arithmetic
+- **Memory arena / pool allocator** — custom allocator for bulk allocation and controlled memory layout
 
 Architectural improvements and enhancements are tracked as [GitHub issues](https://github.com/christianBorrello/cds/issues).
